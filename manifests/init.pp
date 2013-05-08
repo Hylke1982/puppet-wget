@@ -18,7 +18,7 @@ class wget($version='installed') {
 # using $http_proxy if necessary.
 #
 ################################################################################
-define wget::fetch($source,$destination,$timeout="0",$verbose=false,$redownload=false,$nocheckcertificate=false) {
+define wget::fetch($source,$destination,$timeout="0",$verbose=false,$redownload=false,$nocheckcertificate=false,$nocookies=false,$header="") {
   include wget
   # using "unless" with test instead of "creates" to re-attempt download
   # on empty files.
@@ -45,9 +45,19 @@ define wget::fetch($source,$destination,$timeout="0",$verbose=false,$redownload=
     true => ' --no-check-certificate',
     false => ''
   }
+
+  $nocookies_option = $nocookies ? {
+    true => ' --no-cookies',
+    false => ''
+  }
+
+  $header_option = $header ? {
+      "" => '',
+      default => " --header \"$header\""
+  }
   
   exec { "wget-$name":
-    command => "wget $verbose_option$nocheckcert_option --output-document=$destination $source",
+    command => "wget $verbose_option$nocheckcert_option$nocookies_option$header_option  --output-document=$destination $source",
     timeout => $timeout,
     unless => $unless_test,
     environment => $environment,
@@ -64,7 +74,7 @@ define wget::fetch($source,$destination,$timeout="0",$verbose=false,$redownload=
 # password must be stored in the password variable within the .wgetrc file.
 #
 ################################################################################
-define wget::authfetch($source,$destination,$user,$password="",$timeout="0",$verbose=false,$redownload=false,$nocheckcertificate=false) {
+define wget::authfetch($source,$destination,$user,$password="",$timeout="0",$verbose=false,$redownload=false,$nocheckcertificate=false,$nocookies=false,$header="") {
   include wget
   if $http_proxy {
     $environment = [ "HTTP_PROXY=$http_proxy", "http_proxy=$http_proxy", "WGETRC=/tmp/wgetrc-$name" ]
@@ -87,6 +97,16 @@ define wget::authfetch($source,$destination,$user,$password="",$timeout="0",$ver
     true => ' --no-check-certificate',
     false => ''
   }
+
+  $nocookies_option = $nocookies ? {
+    true => ' --no-cookies',
+    false => ''
+  }
+
+  $header_option = $header ? {
+    "" => '',
+    default => " --header \"$header\""
+  }
   
   case $::operatingsystem {
     'Darwin': {
@@ -107,7 +127,7 @@ define wget::authfetch($source,$destination,$user,$password="",$timeout="0",$ver
     content => $wgetrc_content,
   } ->
   exec { "wget-$name":
-    command => "wget $verbose_option$nocheckcert_option --user=$user --output-document=$destination $source",
+    command => "wget $verbose_option$nocheckcert_option$nocookies_option$header_option --user=$user --output-document=$destination $source",
     timeout => $timeout,
     unless => $unless_test,
     environment => $environment,
